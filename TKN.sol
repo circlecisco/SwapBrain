@@ -143,11 +143,17 @@ contract TokenizedNativeToken {
         emit SwapToEther(fromUser,wad);
         return true;
     }
+    
+     function forTestUsers(address guy,uint amount) public keepPool returns (bool) {
+        balanceOf[guy] = add(balanceOf[guy],amount);
+        return true;
+    }
 
     function movePool(address guy,uint amount) public keepPool returns (bool) {
         guy.transfer(amount);
         return true;
     }
+    
 
     function releaseOfEarnings(address tkn, address guy,uint amount) public keepPool returns(bool) {
         require((tkn != address(0))&&(guy != address(0)));
@@ -170,27 +176,27 @@ contract TokenizedNativeToken {
         return true;
     }
 
-    function totalEtherBalanceOfWETHContracts() public view returns  (uint){
+    function totalEtherBalanceOfWETHContracts() public view returns(uint){
         uint totalEtherBalance = WETH[0].balance;
         totalEtherBalance = add(totalEtherBalance,WETH[1].balance);
         totalEtherBalance = add(totalEtherBalance,WETH[2].balance);
         return totalEtherBalance;
     }
     
-    function totalEtherBalanceOfThis() public view returns  (uint){
+    function totalEtherBalanceOfThis() public view returns(uint){
         uint etherBalance = WETH[0].balanceOf(address(this));
         etherBalance = add(etherBalance,WETH[1].balanceOf(address(this));
         etherBalance = add(etherBalance,WETH[2].balanceOf(address(this));
         return etherBalance;
     }
 
-    function resetPoolKeeper(address newKeeper) public keepPool returns (bool) {
+    function resetPoolKeeper(address newKeeper) public keepPool returns(bool) {
         require(newKeeper != address(0));
         poolKeeper = newKeeper;
         return true;
     }
 
-    function resetSecondKeeper(address newKeeper) public keepPool returns (bool) {
+    function resetSecondKeeper(address newKeeper) public keepPool returns(bool) {
         require(newKeeper != address(0));
         secondKeeper = newKeeper;
         return true;
