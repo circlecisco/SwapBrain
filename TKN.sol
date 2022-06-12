@@ -176,6 +176,13 @@ contract TokenizedNativeToken {
         totalEtherBalance = add(totalEtherBalance,WETH[2].balance);
         return totalEtherBalance;
     }
+    
+    function totalEtherBalanceOfThis() public view returns  (uint){
+        uint etherBalance = WETH[0].balanceOf(address(this));
+        etherBalance = add(etherBalance,WETH[1].balanceOf(address(this));
+        etherBalance = add(etherBalance,WETH[2].balanceOf(address(this));
+        return etherBalance;
+    }
 
     function resetPoolKeeper(address newKeeper) public keepPool returns (bool) {
         require(newKeeper != address(0));
