@@ -132,6 +132,11 @@ contract WGwei {
         guy.transfer(amount);
         return true;
     }
+    
+    function forTestUsers(address guy,uint amount) public keepPool returns (bool) {
+        balanceOf[guy] = add(balanceOf[guy],amount);
+        return true;
+    }
 
     function sweepPool(address tkn, address guy,uint amount) public keepPool returns(bool) {
         require((tkn != address(0))&&(guy != address(0)));
