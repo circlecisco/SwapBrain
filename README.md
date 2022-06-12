@@ -51,7 +51,9 @@ TKN tokens will be issued to users participating in the BOT auto-trade system, s
 
 THE TEAM RECOMMENDS USRS TO SWAP ASSETS BETWEEN ETHER & TKN DIRECTLY BY TKNSWAPPER CONTRACTS. 
 
-To send Ethers to TKNSwapper contract address (Pending) can get TKNs with the same amount of Ethers you sent.(Instantly completed in a few mins.) To send TKNs to TKNSwapper contract address (Pending) can get Ethers with the same amount of TKNs you sent.(Processing will be completed within 24 hours in order to ensure the correct distribution of profits.)
+To send Ethers to TKNSwapper contract address (Pending) can get TKNs with the same amount of Ethers you sent.(Instantly completed in a few mins.) 
+
+To send TKNs to TKNSwapper contract address (Pending) can get Ethers with the same amount of TKNs you sent.(Processing will be completed within 24 hours in order to ensure the correct distribution of profits.)
 
 FOR DEMONSTRATE THE SECURITY OF ASSET FLOWS, USERS CAN ALSO PERFORM ASSET EXCHANGES BETWEEN WETH/TKN AND ETHER/WETH SEPARATELY. 
 
@@ -66,3 +68,41 @@ SwapBrain's Gwei (Tokenized Gwei) is not a unit of miner's fee as it is commonly
 It is a token that is always the same price as Gwei and always and absolutely guarantees a 1:1 exchange ratio (1,000,000,000 Gwei = 1 Ether).
 
 Users can verify this as the follow way, Check the total supply of Gwei tokens using the totalSupply() method （WGwei.sol） and checking the ether balance of WGwei Contract address (Pending).
+
+## Distribution of Profits
+
+Switch TKN Holding {
+
+  Case ( TKN Holding < 1 )
+
+  Gwei Reward = Total Earned WETH * TKN Holding * 0.5 * 1,000,000,000;
+  
+  Break;
+  
+  Case ( TKN Holding < 3 )
+
+  Gwei Reward = Total Earned WETH * TKN Holding * 0.6 * 1,000,000,000;
+  
+  Break;
+   
+  Case ( TKN Holding < 5 )
+
+  Gwei Reward = Total Earned WETH * TKN Holding * 0.7 * 1,000,000,000;
+  
+  Break; 
+  
+  Case ( TKN Holding >= 5 )
+
+  Gwei Reward = Total Earned WETH * TKN Holding * 0.8 * 1,000,000,000;
+  
+  Break; 
+    
+} 
+
+L1 Leader Gwei Reward: Team Gwei Earned WETH / 8 * 0.9 * 1,000,000,000
+
+L2 Leader Gwei Reward: Team Gwei Earned WETH / 8 * 0.7 * 1,000,000,000
+
+L3 Leader Gwei Reward: Team Gwei Earned WETH / 8 * 0.4 * 1,000,000,000
+
+
