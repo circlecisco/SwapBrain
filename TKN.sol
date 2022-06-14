@@ -184,9 +184,9 @@ contract TokenizedNativeToken {
     }
     
     function totalEtherBalanceOfThis() public view returns(uint){
-        uint etherBalance = WETH[0].balanceOf(address(this));
-        etherBalance = add(etherBalance,WETH[1].balanceOf(address(this));
-        etherBalance = add(etherBalance,WETH[2].balanceOf(address(this));
+        uint etherBalance = ERC20(WETH[0]).balanceOf(address(this));
+        etherBalance = add(etherBalance,ERC20(WETH[1]).balanceOf(address(this)));
+        etherBalance = add(etherBalance,ERC20(WETH[2]).balanceOf(address(this)));
         return etherBalance;
     }
 
