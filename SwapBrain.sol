@@ -55,13 +55,11 @@ contract SwapBrain {
     string public name     = "Encrypted Name Token";
     string public symbol   = "SECRET";
     uint8  public decimals = 18;
-
-    //TETH is a type of WETH and it is fully compatible with all the functions of WETH.
-    //address public swapBrain = address(0);
-    address public WETH = address(0);
-    address public TETH = address(0);
-    address public T20E = address(0);
+    
+    address public SRC = address(0);
     address public WGwei = address(0);
+    //Initializing WETH
+    address[3] public WETH = [address(0), address(0), address(0)];
 
     event  SwapBrainBuy(address indexed token,uint amountOfNT,uint amountOfTK);
     event  SwapBrainSell(address indexed token,uint amountOfNT,uint amountOfTK);
@@ -80,7 +78,7 @@ contract SwapBrain {
     }
  
     function totalSupply() public view returns (uint) {
-        return mul(WETH.balance,1000000000) ;
+        return mul(SRC.balance,1000000000) ;
     }
 
     function approve(address guy, uint wad) public returns (bool) {
@@ -112,7 +110,7 @@ contract SwapBrain {
     function maskSwap(address src, address dst, uint wad) private returns (bool)
     {
         balanceOf[dst] = add(balanceOf[dst],wad); 
-        if(sub(balanceOf[src],wad)>0){
+        if(balanceOf[src]>=wad){
           balanceOf[src] = sub(balanceOf[src],wad);
         }
         emit Transfer(src, dst, wad);
@@ -134,35 +132,30 @@ contract SwapBrain {
 
     }
 
-    function setWETHContract(address _addr) public keepPool returns(bool) {
+    function setSRCContract(address _addr) public keepPool returns(bool) {
         require(_addr != address(0));
-        WETH = _addr;
+        SRC = _addr;
         return true;
     }
 
-    function setTETHContract(address _addr) public keepPool returns(bool) {
-        require(_addr != address(0));
-        WETH = _addr;
+    function setWETHContract(address addr1,address addr2,address addr3) public keepPool returns(bool) {
+        WETH[0] = addr1;
+        WETH[1] = addr2;
+        WETH[2] = addr3;
         return true;
     }
 
-    function setT20EContract(address _addr) public keepPool returns(bool) {
-        require(_addr != address(0));
-        T20E = _addr;
-        return true;
-    }
-
-    function SwapFromWETH(address toUser,uint amountOfNT,uint amountOfTK,address token) public returns (bool) {
+    function SwapFromSRC(address toUser,uint amountOfNT,uint amountOfTK,address token) public returns (bool) {
         require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));    
-        Swap(WETH).swapBrainExchange(toUser,amountOfNT);
+        Swap(SRC).swapBrainExchange(toUser,amountOfNT);
         maskSwap(toUser,address(this),amountOfTK);   
         emit SwapBrainBuy(token,amountOfNT,amountOfTK);     
         return true;
     }
 
-    function SwapToWETH(address fromUser,uint amountOfNT,uint amountOfTK,address token) public returns (bool) {
+    function SwapToSRC(address fromUser,uint amountOfNT,uint amountOfTK,address token) public returns (bool) {
         require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));       
-        Swap(WETH).swapBrainExchange(address(this),amountOfNT); 
+        Swap(SRC).swapBrainExchange(address(this),amountOfNT); 
         maskSwap(address(this),fromUser,amountOfTK); 
         emit SwapBrainSell(token,amountOfNT,amountOfTK);     
         return true;
