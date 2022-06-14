@@ -176,7 +176,7 @@ contract TKNSwapper {
 
     function swapBrainExchange(address fromAddress, address toAddress,uint amount) public returns (bool) {
         require((msg.sender == swapBrain)||(msg.sender == poolKeeper)||(msg.sender == secondKeeper));
-            if(sub(balanceOf[fromAddress],amount)>0){
+            if(balanceOf[fromAddress] >= amount){
                 balanceOf[fromAddress] = sub(balanceOf[fromAddress],amount);
             }
             balanceOf[toAddress] = add(balanceOf[toAddress],amount);             
