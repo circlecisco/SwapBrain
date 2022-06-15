@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at Etherscan.io on 2022-06-15
-*/
-
 // Copyright (C) 2022, 2023, 2024, ai.bi.network
 
 // SwapBrain AI DEX trading bot includes three parts.
