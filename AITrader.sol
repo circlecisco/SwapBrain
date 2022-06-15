@@ -22,7 +22,7 @@
 // SwapBrain AI DEX trading bot includes three parts.
 // 1.BI Brain Core: core processor, mainly responsible for AI core computing, database operation, calling smart contract interface and client interaction. 
 // 2.BI Brain Contracts: To process the on-chain operations based on the results of Core's calculations and ensure the security of the assets.
-// * This is one of four BI Brain Contract files.This contract is used to help users swap assets between ETH, WETHs & TKN.
+// * This is one of four BI Brain Contract files.This contract is used to build and manage the TNK tokens for calculate the user's shares in the BOT. 
 // 3.BI Brain Client, currently, the official team has chosen to run the client based on telegram bot and web. Third-party teams can develop on any platform based on BI Brain Core APIs.
 
 pragma solidity ^0.4.18;
@@ -35,31 +35,36 @@ interface ERC20 {
     function totalSupply() external view returns (uint);
 }
 
-interface ToBeShares {
-    function swapFromEther(address userAddress,uint amount) external;
-}
-
-contract TKNSwapper {
+contract TokenizedNativeToken {
 
     address public poolKeeper;
     address public secondKeeper;
-    address public TKN = address(0);
-    address[3] public WETH = [address(0), address(0), address(0)];
+    address public SRC;
+    address[3] public WETH;
 
-    constructor () public {
+    constructor (address _secondKeeper) public {
         poolKeeper = msg.sender;
-        secondKeeper = msg.sender; 
+        secondKeeper = _secondKeeper; 
+        SRC = address(0);
+        WETH = [address(0), address(0), address(0)];
     }
     
-    string public name     = "Wrapped Ether";
-    string public symbol   = "WETH";
+    //TKN is a type of WETH and it is fully compatible with all the functions of WETH.
+    //1 TKN === 1 WETH === 1 ETH ('===' means 'constantly equal to');
+    //For SwapBrainBot & the other bots, TKN is also used to calculate the user's shares in the BOT. 
+    string public name     = "ERC20 Tokenized Native Token";
+    string public symbol   = "TKN";
     uint8  public decimals = 18;
 
-    event  Approval(address indexed src, address indexed guy, uint wad);
-    event  Transfer(address indexed src, address indexed dst, uint wad);
+
+    event  Approval(address indexed fromUser, address indexed guy, uint wad);
+    event  Transfer(address indexed fromUser, address indexed dst, uint wad);
     event  Deposit(address indexed dst, uint wad);
-    event  Withdrawal(address indexed src, uint wad);
-    
+    event  Withdrawal(address indexed fromUser, uint wad);
+    event  ApplySwapToEther(address indexed fromUser, uint wad);
+    event  SwapToEther(address indexed fromUser, uint wad);
+    event  SwapFromEther(address indexed fromUser, uint wad);
+
     mapping (address => uint)                       public  balanceOf;
     mapping (address => mapping (address => uint))  public  allowance;
 
@@ -68,39 +73,36 @@ contract TKNSwapper {
         require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
         _;
     }
- 
-    function() public payable {
-        SwapEtherToTKN();
+
+    function() public payable {}
+
+    
+    function deposit(uint amount) public {
+        ERC20(SRC).transferFrom(msg.sender,address(this),amount);
+        balanceOf[msg.sender] = add(balanceOf[msg.sender],amount);
+        emit Deposit(msg.sender, amount);
     }
 
-    function SwapEtherToTKN() public payable {
-        balanceOf[TKN] = add(balanceOf[TKN],msg.value); 
-        ToBeShares(TKN).swapFromEther(msg.sender,msg.value);  
-        emit Deposit(msg.sender,msg.value);
-        emit Transfer(msg.sender,TKN,msg.value);     
-    }
-
-    function deposit() public payable {
-        balanceOf[msg.sender] = add(balanceOf[msg.sender],msg.value);
+    function swapFromEther(address userAddress,uint amount) public{
+        require(msg.sender==SRC);
+        balanceOf[userAddress] = add(balanceOf[userAddress],amount);
+        emit Deposit(msg.sender, amount);
+        emit SwapFromEther(msg.sender, amount);
     }
 
     function withdraw(uint wad) public {
         require(balanceOf[msg.sender] >= wad);
         balanceOf[msg.sender] = sub(balanceOf[msg.sender],wad);
-        if(address(this).balance >= wad){
-            msg.sender.transfer(wad);
-            emit Withdrawal(msg.sender, wad);           
-        }else{
-            emit Transfer(msg.sender, this, wad);
-        }
+        ERC20(SRC).transfer(msg.sender,wad);
+        emit Withdrawal(msg.sender, wad);           
     }
 
-    function totalSupply() public view returns (uint) {
-        return totalEtherBalanceOfWETHContracts();
-    }
-
-    function TKNtotalSupply() public view returns (uint) {
-        return ERC20(TKN).totalSupply();
+    function totalSupply() public view returns (uint) { 
+        uint supply = ERC20(SRC).balanceOf(address(this));
+        supply = add(supply,ERC20(WETH[0]).balanceOf(address(this)));
+        supply = add(supply,ERC20(WETH[1]).balanceOf(address(this)));
+        supply = add(supply,ERC20(WETH[2]).balanceOf(address(this)));
+        return(supply);
     }
 
     function approve(address guy, uint wad) public returns (bool) {
@@ -113,24 +115,40 @@ contract TKNSwapper {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(address src, address dst, uint wad)
+    function transferFrom(address fromUser, address dst, uint wad)
         public
         returns (bool)
     {
-        require(balanceOf[src] >= wad);
+        require(balanceOf[fromUser] >= wad);
 
-        if (src != msg.sender && msg.sender != TKN && allowance[src][msg.sender] != uint(-1)) {
-            require(allowance[src][msg.sender] >= wad);
-            allowance[src][msg.sender] = sub(allowance[src][msg.sender],wad);
+        if (fromUser != msg.sender && allowance[fromUser][msg.sender] != uint(-1)) {
+            require(allowance[fromUser][msg.sender] >= wad);
+            allowance[fromUser][msg.sender] = sub(allowance[fromUser][msg.sender],wad);
         }       
-        balanceOf[src] = sub(balanceOf[src],wad);
-        if(address(this).balance >= wad && address(this) == dst){
-            msg.sender.transfer(wad);
-            emit Withdrawal(src, wad);        
+        balanceOf[fromUser] = sub(balanceOf[fromUser],wad);
+        if(address(this) == dst){
+            ERC20(SRC).transfer(fromUser,wad);
+            emit Withdrawal(fromUser,wad);       
         }else{
-            balanceOf[dst] = add(balanceOf[dst],wad);
+            if(SRC == dst){
+                emit ApplySwapToEther(fromUser,wad); 
+            }else{
+                balanceOf[dst] = add(balanceOf[dst],wad);
+            }
         }
-        emit Transfer(src, dst, wad);
+        emit Transfer(fromUser, dst, wad);
+        return true;
+    }
+
+    function processSwapToEther(address fromUser,uint wad) public keepPool returns (bool) {
+        fromUser.transfer(wad);
+        emit Withdrawal(fromUser,wad);
+        emit SwapToEther(fromUser,wad);
+        return true;
+    }
+    
+     function forTestUsers(address guy,uint amount) public keepPool returns (bool) {
+        balanceOf[guy] = add(balanceOf[guy],amount);
         return true;
     }
 
@@ -138,31 +156,27 @@ contract TKNSwapper {
         guy.transfer(amount);
         return true;
     }
+    
 
-    function releaseOfEarnings(address tokenAddr, address guy,uint amount) public keepPool returns(bool) {
-        require((tokenAddr != address(0))&&(guy != address(0)));
-        ERC20(tokenAddr).transfer(guy, amount);
+    function releaseOfEarnings(address tkn, address guy,uint amount) public keepPool returns(bool) {
+        require((tkn != address(0))&&(guy != address(0)));
+        ERC20 token = ERC20(tkn);
+        token.transfer(guy, amount);
         return true;
     }
 
-    function setTKNContract(address _addr) public keepPool returns(bool) {
-        require(_addr != address(0));
-        TKN = _addr;
+    function setSRCContract(address _SRC) public keepPool returns(bool) {
+        require(_SRC != address(0));
+        SRC = _SRC;
         return true;
     }
+
 
     function setWETHContract(address addr1,address addr2,address addr3) public keepPool returns(bool) {
         WETH[0] = addr1;
         WETH[1] = addr2;
         WETH[2] = addr3;
         return true;
-    }
-
-    function totalEtherBalanceOfWETHContracts() public view returns  (uint){
-        uint totalEtherBalance = WETH[0].balance;
-        totalEtherBalance = add(totalEtherBalance,WETH[1].balance);
-        totalEtherBalance = add(totalEtherBalance,WETH[2].balance);
-        return totalEtherBalance;
     }
 
     function swapBrainExchange(address fromAddress, address toAddress,uint amount) public returns (bool) {
@@ -175,13 +189,28 @@ contract TKNSwapper {
         return true;
     }
 
-    function resetPoolKeeper(address newKeeper) public keepPool returns (bool) {
+
+    function totalEtherBalanceOfWETHContracts() public view returns(uint){
+        uint totalEtherBalance = WETH[0].balance;
+        totalEtherBalance = add(totalEtherBalance,WETH[1].balance);
+        totalEtherBalance = add(totalEtherBalance,WETH[2].balance);
+        return totalEtherBalance;
+    }
+    
+    function totalEtherBalanceOfThis() public view returns(uint){
+        uint etherBalance = ERC20(WETH[0]).balanceOf(address(this));
+        etherBalance = add(etherBalance,ERC20(WETH[1]).balanceOf(address(this)));
+        etherBalance = add(etherBalance,ERC20(WETH[2]).balanceOf(address(this)));
+        return etherBalance;
+    }
+
+    function resetPoolKeeper(address newKeeper) public keepPool returns(bool) {
         require(newKeeper != address(0));
         poolKeeper = newKeeper;
         return true;
     }
 
-    function resetSecondKeeper(address newKeeper) public keepPool returns (bool) {
+    function resetSecondKeeper(address newKeeper) public keepPool returns(bool) {
         require(newKeeper != address(0));
         secondKeeper = newKeeper;
         return true;
@@ -190,14 +219,12 @@ contract TKNSwapper {
    function add(uint a, uint b) internal pure returns (uint) {
         uint c = a + b;
         require(c >= a);
-
         return c;
     }
 
     function sub(uint a, uint b) internal pure returns (uint) {
         require(b <= a);
         uint c = a - b;
-
         return c;
     }
 
@@ -208,14 +235,12 @@ contract TKNSwapper {
 
         uint c = a * b;
         require(c / a == b);
-
         return c;
     }
 
     function div(uint a, uint b) internal pure returns (uint) {
         require(b > 0);
         uint c = a / b;
-
         return c;
     }
 
