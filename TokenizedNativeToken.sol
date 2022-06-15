@@ -41,12 +41,14 @@ contract TokenizedNativeToken {
     address public secondKeeper;
     address public SRC;
     address[3] public WETH;
+
     constructor (address _secondKeeper) public {
         poolKeeper = msg.sender;
         secondKeeper = _secondKeeper; 
         SRC = address(0);
         WETH = [address(0), address(0), address(0)];
     }
+    
     //TKN is a type of WETH and it is fully compatible with all the functions of WETH.
     //1 TKN === 1 WETH === 1 ETH ('===' means 'constantly equal to');
     //For SwapBrainBot & the other bots, TKN is also used to calculate the user's shares in the BOT. 
