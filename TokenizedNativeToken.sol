@@ -1,3 +1,7 @@
+/**
+ *Submitted for verification at Etherscan.io on 2022-06-15
+*/
+
 // Copyright (C) 2022, 2023, 2024, ai.bi.network
 
 // SwapBrain AI DEX trading bot includes three parts.
@@ -39,9 +43,13 @@ contract TokenizedNativeToken {
 
     address public poolKeeper;
     address public secondKeeper;
+    address public SRC;
+    address[3] public WETH;
     constructor (address _secondKeeper) public {
         poolKeeper = msg.sender;
         secondKeeper = _secondKeeper; 
+        SRC = address(0);
+        WETH = [address(0), address(0), address(0)];
     }
     //TKN is a type of WETH and it is fully compatible with all the functions of WETH.
     //1 TKN === 1 WETH === 1 ETH ('===' means 'constantly equal to');
@@ -49,10 +57,7 @@ contract TokenizedNativeToken {
     string public name     = "ERC20 Tokenized Native Token";
     string public symbol   = "TKN";
     uint8  public decimals = 18;
-    address public SRC = address(0);
-    
-    //Initializing WETH
-    address[3] public WETH = [address(0), address(0), address(0)];
+
 
     event  Approval(address indexed fromUser, address indexed guy, uint wad);
     event  Transfer(address indexed fromUser, address indexed dst, uint wad);
