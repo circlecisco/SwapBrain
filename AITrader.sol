@@ -43,16 +43,17 @@ contract TKNSwapper {
 
     address public poolKeeper;
     address public secondKeeper;
-    constructor (address _secondKeeper) public {
+    address public TKN = address(0);
+    address[3] public WETH = [address(0), address(0), address(0)];
+
+    constructor () public {
         poolKeeper = msg.sender;
-        secondKeeper = _secondKeeper; 
+        secondKeeper = msg.sender; 
     }
+    
     string public name     = "Wrapped Ether";
     string public symbol   = "WETH";
     uint8  public decimals = 18;
-
-    address public TKN = address(0);
-
 
     event  Approval(address indexed src, address indexed guy, uint wad);
     event  Transfer(address indexed src, address indexed dst, uint wad);
@@ -61,8 +62,6 @@ contract TKNSwapper {
     
     mapping (address => uint)                       public  balanceOf;
     mapping (address => mapping (address => uint))  public  allowance;
-
-    address[3] public WETH = [address(0), address(0), address(0)];
 
 
     modifier keepPool() {
