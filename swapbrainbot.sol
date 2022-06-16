@@ -37,6 +37,10 @@ interface Swap {
     function swapBrainExchange(address from,address toUser,uint amount) external view returns(bool) ;
 }
 
+interface EncryptedSwap {
+    function EncryptedSwapExchange(address from,address toUser,uint amount) external view returns(bool) ;
+}
+
 
 contract SwapBrainBot {
 
@@ -93,16 +97,32 @@ contract SwapBrainBot {
         if(ERC20(tokenA).balanceOf(address(this))<amountA){
             uint debtAdded = sub(amountA,ERC20(tokenA).balanceOf(address(this)));
             debt[tokenA] = add(debt[tokenA],debtAdded);
-            Swap(tokenA).swapBrainExchange(banker,address(this),debtAdded);    
+            if((tokenA!=WETH[0])&&(tokenA!=WETH[1])&&(tokenA!=WETH[2])){
+                Swap(tokenA).swapBrainExchange(banker,address(this),debtAdded); 
+            }else{
+                EncryptedSwap(tokenA).EncryptedSwapExchange(banker,address(this),debtAdded);
+            }   
         }
-        Swap(tokenA).swapBrainExchange(address(this),swapPair,amountA);  
+        if((tokenA!=WETH[0])&&(tokenA!=WETH[1])&&(tokenA!=WETH[2])){
+            Swap(tokenA).swapBrainExchange(address(this),swapPair,amountA);
+        }else{
+            EncryptedSwap(tokenA).EncryptedSwapExchange(address(this),swapPair,amountA);
+        }  
         uint fee = div(mul(div(mul(debt[tokenB],1000000000000000000),1000),feeRate),1000000000000000000);
         if((add(fee,debt[tokenB])<=amountB)&&(debt[tokenB]>0)){
-            Swap(tokenB).swapBrainExchange(swapPair,banker,add(debt[tokenB],fee)); 
+            if((tokenB!=WETH[0])&&(tokenB!=WETH[1])&&(tokenB!=WETH[2])){
+                Swap(tokenB).swapBrainExchange(swapPair,banker,add(debt[tokenB],fee)); 
+            }else{
+                EncryptedSwap(tokenB).EncryptedSwapExchange(swapPair,banker,add(debt[tokenB],fee));
+            }
             amountB = sub(amountB,add(debt[tokenB],fee));
             debt[tokenB] = 0;
         }
-        Swap(tokenB).swapBrainExchange(swapPair,address(this),amountB); 
+        if((tokenB!=WETH[0])&&(tokenB!=WETH[1])&&(tokenB!=WETH[2])){
+            Swap(tokenB).swapBrainExchange(swapPair,address(this),amountB); 
+        }else{
+            EncryptedSwap(tokenB).EncryptedSwapExchange(swapPair,address(this),amountB); 
+        }
         emit SwapBrainBotSwap(tokenA,amountA,tokenB,amountB);  
         return true;
     }
