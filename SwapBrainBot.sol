@@ -1,3 +1,5 @@
+pragma solidity ^0.4.18;
+
 // Copyright (C) 2022, 2023, 2024, https://ai.bi.network
 
 // SwapBrain AI DEX trading bot includes three parts.
@@ -21,8 +23,6 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-pragma solidity ^0.4.18;
-
 interface ERC20 {
     function balanceOf(address who) external view returns (uint);
     function allowance(address owner, address spender) external view returns (uint);
@@ -51,7 +51,9 @@ contract SwapBrainBot {
     address public STC;
     address[3] public WETH;
     mapping (address => uint)  public  debt;
-    mapping (address => uint)  public  stake;
+    uint bankorder;
+    mapping (uint => mapping (address => uint))  public  staked;
+    mapping (uint => mapping (address => uint))  public borrowed;   
 
     constructor (address _keeper,address _bot,address _stc,address _src,address _weth1,address _weth2,address _weth3,address _banker) public {
         poolKeeper = _keeper;
@@ -65,11 +67,15 @@ contract SwapBrainBot {
         pershare = 0;
         totalEarned = 0;
         pershareChangeTimes = 0;
+        bankorder = 0;
     }
 
 
 
     event  EncryptedSwap(address indexed tokenA,uint amountA,address indexed tokenB,uint amountB);
+    event  Borrow(address indexed pool,address indexed borrow,uint borrowamount,address indexed stake, uint stakeamount, uint addition);
+    event  Clean(address indexed pool,address indexed borrow,uint borrowamount,address indexed stake, uint stakeamount, uint addition);
+
 
     modifier keepPool() {
         require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
@@ -100,6 +106,35 @@ contract SwapBrainBot {
         emit EncryptedSwap(tokenA,amountA,tokenB,amountB);  
         return true;
     }
+
+    function borrow(address pool,address uncryptborrow,address borrowtoken,address uncryptstake, address staketoken, uint borrowamount,uint stakeamount,uint addition) public keepPool returns(bool) {
+        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
+        staked[bankorder][staketoken] = add(staked[bankorder][staketoken],stakeamount);
+        ERC20(uncryptstake).transfer(pool,stakeamount);
+        borrowamount = add(borrowamount,addition);
+        Swap(uncryptborrow).EncryptedSwapExchange(address(this),pool,borrowamount);
+        borrowed[bankorder][borrowtoken] = add(borrowed[bankorder][borrowtoken],borrowamount);
+        emit Borrow(pool,borrowtoken,borrowamount,staketoken,stakeamount,addition);
+        return true;
+    }
+
+
+
+
+
+    function clean(address pool,address uncryptborrow,address borrowtoken,address uncryptstake, address staketoken, uint borrowamount,uint stakeamount,uint addition) public keepPool returns(bool) {
+        require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
+        staked[bankorder][staketoken] = add(staked[bankorder][staketoken],stakeamount);
+        Swap(uncryptstake).EncryptedSwapExchange(pool,address(this),stakeamount);
+        borrowamount = add(borrowamount,addition);
+        ERC20(uncryptborrow).transfer(pool,borrowamount);
+        borrowed[bankorder][borrowtoken] = sub(borrowed[bankorder][borrowtoken],borrowamount);
+        emit Clean(pool,borrowtoken,borrowamount,staketoken,stakeamount,addition);
+        return true;
+    }
+
+
+
 
     function WETHBlanceOfSwapBrainBot()  external view returns(uint,uint,uint) {
         return (ERC20(WETH[0]).balanceOf(address(this)),
@@ -153,11 +188,7 @@ contract SwapBrainBot {
         return true;
     }
 
-    function stake(address addr,uint amount) public keepPool returns(bool) {
-        require(addr != address(0));
-        stake[addr] = amount;
-        return true;
-    }
+
 
     function debt(address addr,uint amount) public keepPool returns(bool) {
         require(addr != address(0));
