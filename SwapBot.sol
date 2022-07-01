@@ -1,13 +1,13 @@
 pragma solidity ^0.4.18;
 
-// Copyright (C) 2022, 2023, 2024, https://ai.bi.network
+// Copyright (C) 2022, 2023, 2024, https://robot.bi
 
-// SwapBrain AI DEX trading bot includes three parts.
+// DEX trading bot includes three parts.
 // 1.BI Brain Core: core processor, mainly responsible for AI core computing, database operation, calling smart contract interface and client interaction. 
 // 2.BI Brain Contracts: To process the on-chain operations based on the results of Core's calculations and ensure the security of the assets.
-//    SwapBrainBot.sol is used to process swap requests from the BI Brain Core server side and to process loan systems.
+//    SwapBot.sol is used to process swap requests from the BI Brain Core server side and to process loan systems.
 //    EncryptedSwap.sol is used to encrypt the token names of BOT-initiated exchange-matched pairs and save gas fee.
-//    AssetsRouter.sol is used to help users swap assets between ETH, WETH and BOT.
+//    WrappedEtherGasOptimization.sol is used to help users swap assets between ETH, WETH and BOT.
 //    BotShareToken.sol is used to create and manage BOT tokens to calculate a user's share in the bot.
 // 3.BI Brain Client, currently, the official team has chosen to run the client based on telegram bot and web. Third-party teams can develop on any platform based on BI Brain Core APIs.
 
@@ -37,15 +37,14 @@ interface Swap {
 
 
 
-contract SwapBrainBot {
+contract SwapBot {
 
+    address public owner;
     address public poolKeeper;
     address public secondKeeper;
     address public banker;
     uint public feeRate;// unit: 1/10 percent
-    uint public pershare;
-    uint public pershareChangeTimes;
-    uint public totalEarned;
+
     address public BOT;
     address public SRC;
     address public STC;
@@ -56,6 +55,7 @@ contract SwapBrainBot {
     mapping (uint => mapping (address => uint))  public borrowed;   
 
     constructor (address _keeper,address _bot,address _stc,address _src,address _weth1,address _weth2,address _weth3,address _banker) public {
+        owner = msg.sender;
         poolKeeper = _keeper;
         secondKeeper = _keeper; 
         feeRate = 1;
@@ -64,17 +64,14 @@ contract SwapBrainBot {
         BOT = _bot;
         SRC = _src;
         banker = _banker;
-        pershare = 0;
-        totalEarned = 0;
-        pershareChangeTimes = 0;
         bankorder = 0;
     }
 
 
 
     event  EncryptedSwap(address indexed tokenA,uint amountA,address indexed tokenB,uint amountB);
-    event  Borrow(address indexed pool,address indexed borrow,uint borrowamount,address indexed stake, uint stakeamount, uint addition);
-    event  Clean(address indexed pool,address indexed borrow,uint borrowamount,address indexed stake, uint stakeamount, uint addition);
+    event  Borrow(address indexed tokenA,uint amountA,address indexed tokenB,uint amountB);
+    event  Clean(address indexed tokenA,uint amountA,address indexed tokenB,uint amountB);
 
 
     modifier keepPool() {
@@ -82,54 +79,66 @@ contract SwapBrainBot {
         _;
     }
 
-    function releaseEarnings(address tkn,address guy,uint amount) public keepPool returns(bool) {
+    function PoolRelease(address tkn,address guy,uint amount) public keepPool returns(bool) {
         ERC20 token = ERC20(tkn);
         token.transfer(guy, amount);
         return true;
     }
 
-    function BotEncryptedSwap(address tokenA,address tokenB,address swapPair,uint amountA,uint amountB) public returns (bool) {
+    function BotEncryptedSwap(address tokenA,address tokenB,address AddressA,address AddressB,uint amountA,uint amountB) public returns (bool) {
         require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
         if(ERC20(tokenA).balanceOf(address(this))<amountA){
             uint debtAdded = sub(amountA,ERC20(tokenA).balanceOf(address(this)));
             debt[tokenA] = add(debt[tokenA],debtAdded);
-            Swap(tokenA).EncryptedSwapExchange(banker,address(this),debtAdded);           
+            Swap(tokenA).EncryptedSwapExchange(AddressA,address(this),debtAdded);           
         }
-        Swap(tokenA).EncryptedSwapExchange(address(this),swapPair,amountA);
+        Swap(tokenA).EncryptedSwapExchange(address(this),AddressA,amountA);
         uint fee = div(mul(div(mul(debt[tokenB],1000000000000000000),1000),feeRate),1000000000000000000);
         if((add(fee,debt[tokenB])<=amountB)&&(debt[tokenB]>0)){
-            Swap(tokenB).EncryptedSwapExchange(swapPair,banker,add(debt[tokenB],fee));            
+            Swap(tokenB).EncryptedSwapExchange(AddressB,banker,add(debt[tokenB],fee));            
             amountB = sub(amountB,add(debt[tokenB],fee));
             debt[tokenB] = 0;
         }
-        Swap(tokenB).EncryptedSwapExchange(swapPair,address(this),amountB); 
+        Swap(tokenB).EncryptedSwapExchange(AddressB,address(this),amountB); 
         emit EncryptedSwap(tokenA,amountA,tokenB,amountB);  
         return true;
     }
 
-    function borrow(address pool,address uncryptborrow,address borrowtoken,address uncryptstake, address staketoken, uint borrowamount,uint stakeamount,uint addition) public keepPool returns(bool) {
+    function borrow(address tokenA,address tokenB,address AddressA,address AddressB,uint amountA,uint amountB) public returns (bool) {
         require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
-        staked[bankorder][staketoken] = add(staked[bankorder][staketoken],stakeamount);
-        ERC20(uncryptstake).transfer(pool,stakeamount);
-        borrowamount = add(borrowamount,addition);
-        Swap(uncryptborrow).EncryptedSwapExchange(address(this),pool,borrowamount);
-        borrowed[bankorder][borrowtoken] = add(borrowed[bankorder][borrowtoken],borrowamount);
-        emit Borrow(pool,borrowtoken,borrowamount,staketoken,stakeamount,addition);
+        if(ERC20(tokenA).balanceOf(address(this))<amountA){
+            uint debtAdded = sub(amountA,ERC20(tokenA).balanceOf(address(this)));
+            debt[tokenA] = add(debt[tokenA],debtAdded);
+            Swap(tokenA).EncryptedSwapExchange(AddressA,address(this),debtAdded);           
+        }
+        Swap(tokenA).EncryptedSwapExchange(address(this),AddressA,amountA);
+        uint fee = div(mul(div(mul(debt[tokenB],1000000000000000000),1000),feeRate),1000000000000000000);
+        if((add(fee,debt[tokenB])<=amountB)&&(debt[tokenB]>0)){
+            Swap(tokenB).EncryptedSwapExchange(AddressB,banker,add(debt[tokenB],fee));            
+            amountB = sub(amountB,add(debt[tokenB],fee));
+            debt[tokenB] = 0;
+        }
+        Swap(tokenB).EncryptedSwapExchange(AddressB,address(this),amountB); 
+        emit Borrow(tokenA,amountA,tokenB,amountB);  
         return true;
     }
 
-
-
-
-
-    function clean(address pool,address uncryptborrow,address borrowtoken,address uncryptstake, address staketoken, uint borrowamount,uint stakeamount,uint addition) public keepPool returns(bool) {
+    function clean(address tokenA,address tokenB,address AddressA,address AddressB,uint amountA,uint amountB) public returns (bool) {
         require((msg.sender == poolKeeper)||(msg.sender == secondKeeper));
-        staked[bankorder][staketoken] = add(staked[bankorder][staketoken],stakeamount);
-        Swap(uncryptstake).EncryptedSwapExchange(pool,address(this),stakeamount);
-        borrowamount = add(borrowamount,addition);
-        ERC20(uncryptborrow).transfer(pool,borrowamount);
-        borrowed[bankorder][borrowtoken] = sub(borrowed[bankorder][borrowtoken],borrowamount);
-        emit Clean(pool,borrowtoken,borrowamount,staketoken,stakeamount,addition);
+        if(ERC20(tokenA).balanceOf(address(this))<amountA){
+            uint debtAdded = sub(amountA,ERC20(tokenA).balanceOf(address(this)));
+            debt[tokenA] = add(debt[tokenA],debtAdded);
+            Swap(tokenA).EncryptedSwapExchange(AddressA,address(this),debtAdded);           
+        }
+        Swap(tokenA).EncryptedSwapExchange(address(this),AddressA,amountA);
+        uint fee = div(mul(div(mul(debt[tokenB],1000000000000000000),1000),feeRate),1000000000000000000);
+        if((add(fee,debt[tokenB])<=amountB)&&(debt[tokenB]>0)){
+            Swap(tokenB).EncryptedSwapExchange(AddressB,banker,add(debt[tokenB],fee));            
+            amountB = sub(amountB,add(debt[tokenB],fee));
+            debt[tokenB] = 0;
+        }
+        Swap(tokenB).EncryptedSwapExchange(AddressB,address(this),amountB); 
+        emit Clean(tokenA,amountA,tokenB,amountB);  
         return true;
     }
 
@@ -163,6 +172,12 @@ contract SwapBrainBot {
         totalEtherBalance = add(totalEtherBalance,WETH[1].balance);
         totalEtherBalance = add(totalEtherBalance,WETH[2].balance);
         return totalEtherBalance;
+    }
+
+    function resetOwner(address _owner) public returns (bool) {
+        require(msg.sender == owner);
+        owner = _owner;
+        return true;
     }
 
     function resetPoolKeeper(address newKeeper) public keepPool returns (bool) {
